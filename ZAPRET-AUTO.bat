@@ -390,7 +390,7 @@ function Preflight {
     if($u){ $p = Get-Process -Id $u.OwningProcess -ErrorAction SilentlyContinue
             if($p -and $p.ProcessName -notmatch 'dnscrypt'){ Log ((T "  [!] 53 portunu '{0}' kullanıyor (Pi-hole/Acrylic vb.). dnscrypt DoH çakışabilir." "  [!] Port 53 is used by '{0}' (Pi-hole/Acrylic etc.). dnscrypt DoH may conflict.") -f $p.ProcessName) 'warn' } }
   } catch {}
-  foreach($pi in @(Find-ProxyIssues)){ Log ("  [!] " + $pi + (T ' -- açıksa ölçümler ISP''yi değil proxy''yi ölçer; Test/Kur sırasında kapat.' ' -- if active, measurements reflect the proxy, not the ISP; turn it off during Test/Install.')) 'warn' }
+  foreach($pi in @(Find-ProxyIssues)){ Log ("  [!] " + $pi + (T '. Açıksa ölçümler ISS''yi değil proxy''yi ölçer; Test/Kur sırasında kapat.' '. If active, measurements reflect the proxy, not the ISP; turn it off during Test/Install.')) 'warn' }
   $ho = @(Find-HostsOverrides)
   if($ho.Count){
     Log (T '  [!] hosts dosyasında engelli sitelere elle yazılmış IP var (DNS''i ezer, siteleri bozabilir):' '  [!] hosts file has manual IPs for blocked sites (overrides DNS, can break the sites):') 'warn'
@@ -518,7 +518,7 @@ function Find-ProxyIssues {
         # yerel proxy = büyük ihtimalle proxy tabanlı bir DPI aracı (ByeDPI, SpoofDPI vb.); portu kim dinliyor?
         $who = $null
         try { $cn = Get-NetTCPConnection -LocalPort ([int]$Matches[2]) -State Listen -ErrorAction Stop | Select-Object -First 1; $who = (Get-Process -Id $cn.OwningProcess -ErrorAction Stop).ProcessName } catch {}
-        $out += ((T 'Windows proxy''si yerel bir programa yönlendiriyor ({0}{1}) -- ByeDPI/SpoofDPI gibi proxy tabanlı bir DPI aracı olabilir' 'Windows proxy points to a local program ({0}{1}) -- may be a proxy-based DPI tool like ByeDPI/SpoofDPI') -f $ps, $(if($who){ ", $who" } else { '' }))
+        $out += ((T 'Windows proxy''si yerel bir programa yönlendiriyor ({0}{1}). ByeDPI/SpoofDPI gibi proxy tabanlı bir DPI aracı olabilir' 'Windows proxy points to a local program ({0}{1}). It may be a proxy-based DPI tool like ByeDPI/SpoofDPI') -f $ps, $(if($who){ ", $who" } else { '' }))
       } else { $out += ((T 'Windows sistem proxy''si açık: {0}' 'Windows system proxy is on: {0}') -f $ps) }
     }
   } catch {}
@@ -640,7 +640,7 @@ function Ensure-Zip([string]$kind){
   $p = $Pkgs[$kind]
   $cached = Join-Path $CacheDir $p.File
   if((Test-Path -LiteralPath $cached) -and (Get-FileHash -LiteralPath $cached -Algorithm SHA256).Hash -eq $p.Sha){
-    Log ((T '  {0}: önbellekte hazır ({1}), SHA256 doğrulandı -- indirme yok.' '  {0}: already cached ({1}), SHA256 verified -- no download.') -f $p.File, $CacheDir) 'dim'
+    Log ((T '  {0}: önbellekte hazır ({1}), SHA256 doğrulandı, indirme gerekmedi.' '  {0}: already cached ({1}), SHA256 verified, no download needed.') -f $p.File, $CacheDir) 'dim'
     return $cached
   }
   if($env:ZA_SRC -and (Test-Path -LiteralPath $env:ZA_SRC)){
@@ -971,7 +971,7 @@ function Test-Strategy($s, $targets, [int]$mustBeat = -1){
   return $pass
 }
 function Bakeoff($targets, [string[]]$preferred){
-  Head ((T '[4] Strateji taraması -- {0} hedef: {1}' '[4] Strategy bake-off -- {0} targets: {1}') -f $targets.Count, (($targets | ForEach-Object { $_.Domain }) -join ', '))
+  Head ((T '[4] Strateji taraması ({0} hedef: {1})' '[4] Strategy bake-off ({0} targets: {1})') -f $targets.Count, (($targets | ForEach-Object { $_.Domain }) -join ', '))
   $all = @(Get-Strategies)
   $ordered = @(); foreach($n in $preferred){ $ordered += @($all | Where-Object { $_.Name -eq $n }) }
   $ordered += @($all | Where-Object { $preferred -notcontains $_.Name })
@@ -1345,7 +1345,7 @@ function Do-Watch {
     }
     # 2b) sonradan kurulan / açılan çakışan bir araç var mı? (kullanıcının aracına kendiliğinden dokunmayız; haber veririz)
     $cf = @(Find-Conflicts -Quick)
-    if($cf.Count){ Ev ((T 'çakışan DPI aracı tespit edildi: {0} -- arayüzden Kur/Onar ile durdurulabilir' 'conflicting DPI tool detected: {0} -- can be stopped via Install/Repair in the UI') -f (($cf | ForEach-Object { $_.Name }) -join ', ')) 'warn'; $result = 'fail' }
+    if($cf.Count){ Ev ((T 'çakışan DPI aracı tespit edildi: {0}. Kur/Onar ile durdurulabilir' 'conflicting DPI tool detected: {0}. It can be stopped with Install/Repair') -f (($cf | ForEach-Object { $_.Name }) -join ', ')) 'warn'; $result = 'fail' }
     # 3) strateji sağlığı
     $targets = @(PGet $st 'targets' @())
     if((On $cfg.zapret) -and $targets.Count -and (Get-Process winws -ErrorAction SilentlyContinue)){
@@ -1556,7 +1556,7 @@ function Do-ZapretOn {
   Need-Admin; Enter-Op 'zapret-on'; Set-Pref 'zapret' 1; Head (T '[zapret açılıyor]' '[enabling zapret]')
   if(Get-Service zapret -ErrorAction SilentlyContinue){
     Set-Service zapret -StartupType Automatic -ErrorAction SilentlyContinue; Kill-Winws; Start-Service zapret -ErrorAction SilentlyContinue
-    if(Wait-WinwsStable){ Log (T '  zapret açıldı ve çalışıyor.' '  zapret enabled and running.') 'ok' } else { Log (T '  servis başladı ama winws ayakta kalmıyor -- Kur/Onar dene.' '  service started but winws does not stay up -- try Install/Repair.') 'warn' }
+    if(Wait-WinwsStable){ Log (T '  zapret açıldı ve çalışıyor.' '  zapret enabled and running.') 'ok' } else { Log (T '  servis başladı ama winws ayakta kalmıyor. Kur/Onar dene.' '  service started but winws does not stay up. Try Install/Repair.') 'warn' }
   } else { Log (T '  zapret servisi henüz yok. Önce Kur/Onar çalıştır.' '  zapret service does not exist yet. Run Install/Repair first.') 'warn' }
 }
 function Do-ZapretOff {
@@ -1669,7 +1669,7 @@ function Do-Install([bool]$probe){
       $dohEng = Apply-DoH
       if(-not $dohEng){ Log (T '  DoH kurulamadı -> DNS düz 1.1.1.1/8.8.8.8''e ayarlanıyor (zehirsiz ama şifresiz).' '  DoH failed -> setting plain 1.1.1.1/8.8.8.8 (unpoisoned but unencrypted).') 'warn'; Set-EgressDns $PlainDns; Assert-Online }
     } else {
-      Head (T '[5] DoH tercihi KAPALI -- şifreli DNS atlanıyor.' '[5] DoH preference OFF -- skipping encrypted DNS.')
+      Head (T '[5] DoH tercihi KAPALI, şifreli DNS atlanıyor.' '[5] DoH preference OFF, skipping encrypted DNS.')
       if(PGet (Get-State) 'dohEngine'){ Remove-DoH; Set-EgressDns $PlainDns }
     }
     $st = Get-State
@@ -1679,7 +1679,7 @@ function Do-Install([bool]$probe){
       PSet $st 'strategy' $n
       PSet $st 'targets' @($found | ForEach-Object { $_.Domain })
     } else {
-      Head (T '[6] zapret tercihi KAPALI -- winws kurulmuyor.' '[6] zapret preference OFF -- not installing winws.')
+      Head (T '[6] zapret tercihi KAPALI, winws kurulmuyor.' '[6] zapret preference OFF, not installing winws.')
       Stop-Service zapret -Force -ErrorAction SilentlyContinue; Set-Service zapret -StartupType Disabled -ErrorAction SilentlyContinue
       $script:ZapWas = $false
     }
@@ -1699,7 +1699,7 @@ function Do-Install([bool]$probe){
     Show-Status
     Head (T 'HEPSİ TAMAM.' 'ALL DONE.')
     Log ("  " + (T 'DPI atlatma : ' 'DPI bypass  : ') + $(if(On $cfg.zapret){ (T 'zapret servisi (winws + autohostlist), açılışta otomatik' 'zapret service (winws + autohostlist), auto-start') } else { T 'KAPALI (tercih)' 'OFF (preference)' })) 'ok'
-    Log ("  DNS         : " + $(if(-not (On $cfg.doh)){ T 'DoH kapalı (tercih) -- düz 1.1.1.1/8.8.8.8' 'DoH off (preference) -- plain 1.1.1.1/8.8.8.8' } elseif($dohEng -eq 'native'){ T 'şifreli (Windows yerleşik DoH)' 'encrypted (Windows built-in DoH)' } elseif($dohEng){ T 'şifreli (dnscrypt-proxy DoH)' 'encrypted (dnscrypt-proxy DoH)' } else { T 'düz 1.1.1.1/8.8.8.8 (DoH kurulamadı)' 'plain 1.1.1.1/8.8.8.8 (DoH failed)' })) 'ok'
+    Log ("  DNS         : " + $(if(-not (On $cfg.doh)){ T 'DoH kapalı (tercih), düz 1.1.1.1/8.8.8.8' 'DoH off (preference), plain 1.1.1.1/8.8.8.8' } elseif($dohEng -eq 'native'){ T 'şifreli (Windows yerleşik DoH)' 'encrypted (Windows built-in DoH)' } elseif($dohEng){ T 'şifreli (dnscrypt-proxy DoH)' 'encrypted (dnscrypt-proxy DoH)' } else { T 'düz 1.1.1.1/8.8.8.8 (DoH kurulamadı)' 'plain 1.1.1.1/8.8.8.8 (DoH failed)' })) 'ok'
     Log ("  " + (T 'Kayıt       : ' 'Log         : ') + $LogFile) 'dim'
   } finally {
     # sadece ölçüm/yarıda kalma durumunda: geçici winws'i temizle ve eski servisi geri başlat
@@ -2199,18 +2199,18 @@ function Start-Gui {
   $ui.cZap.Text = T 'DPI atlatma' 'DPI bypass'; $ui.cDoh.Text = T 'Şifreli DNS' 'Encrypted DNS'; $ui.cWat.Text = T 'Nöbetçi' 'Watchdog'
   $ui.lblSites.Text = T 'Şimdi kontrol et' 'Check now'
   $ui.lblWatchNow.Text = T 'Şimdi çalıştır' 'Run now'
-  $ui.wAbout.Text = T 'Nöbetçi arka planda sürekli çalışan bir program değildir; Windows''un zamanlanmış görevidir. Açılışta, 6 saatte bir ve ağ değişince çalışır: duran servisleri başlatır, bozulan DNS ayarını düzeltir, strateji artık çalışmıyorsa yenisini bulur ve yarıda kalmış işlemleri toparlar.' 'The watchdog is not a resident program; it is a Windows scheduled task. It runs at boot, every 6 hours and on network change: restarts stopped services, fixes DNS drift, finds a new strategy if the current one stops working, and recovers interrupted tasks.'
+  $ui.wAbout.Text = T 'Açılışta, 6 saatte bir ve ağ değişince kontrol eder. Duran servisleri başlatır, bozulan DNS ayarını düzeltir, strateji çalışmaz olursa yenisini bulur.' 'Checks at boot, every 6 hours and on network change. Restarts stopped services, fixes broken DNS settings and finds a new strategy if the current one stops working.'
   $ui.hEvents.Text = T 'Son olaylar' 'Recent events'
   $ui.sGameT.Text = T 'Oyun filtresi' 'Game filter'
-  $ui.sGameD.Text = T 'DPI atlatmayı 1024-65535 arası TCP/UDP portlarına da uygular (sadece paketteki IP listesine giden trafik). Bir oyun ya da oyun içi ses bağlanmıyorsa aç; sorun yoksa kapalı kalsın.' 'Also applies DPI bypass to TCP/UDP ports 1024-65535 (only traffic to the bundled IP list). Turn on if a game or in-game voice won''t connect; otherwise keep it off.'
+  $ui.sGameD.Text = T 'Bir oyun ya da oyun içi sesli sohbet bağlanmıyorsa aç. Sorun yoksa kapalı kalsın.' 'Turn on if a game or in-game voice chat won''t connect. Otherwise keep it off.'
   $ui.sEngT.Text = T 'Şifreli DNS motoru' 'Encrypted DNS engine'
-  $ui.sEngD.Text = T 'Otomatik: Windows 11''de Windows''un kendi DoH''u, Windows 10''da dnscrypt-proxy. Değişiklik bir sonraki DoH açılışında / Kur-Onar''da uygulanır.' 'Automatic: Windows'' own DoH on Windows 11, dnscrypt-proxy on Windows 10. Applies on the next DoH enable / Install-Repair.'
+  $ui.sEngD.Text = T 'Otomatik: Windows 11''de yerleşik DoH, Windows 10''da dnscrypt-proxy. Değişiklik Kur / Onar ile uygulanır.' 'Automatic: built-in DoH on Windows 11, dnscrypt-proxy on Windows 10. Changes apply with Install / Repair.'
   $ui.engAuto.Content = T 'Otomatik' 'Automatic'; $ui.engNat.Content = T 'Windows yerleşik' 'Windows built-in'
   $ui.sLangT.Text = T 'Dil' 'Language'
   $ui.sLangD.Text = T 'Arayüz yeniden açılınca uygulanır.' 'Applies when the window is reopened.'
   $ui.langAuto.Content = T 'Otomatik' 'Automatic'
   $ui.sToolsT.Text = T 'Araçlar' 'Tools'
-  $ui.sToolsD.Text = T 'Rapor: destek için maskelenmiş teşhis dosyası. Çevrimdışı paket: interneti / GitHub erişimi olmayan bir bilgisayar için .bat + paketler.' 'Report: masked diagnostic file for support. Offline package: .bat + packages for a PC without internet / GitHub access.'
+  $ui.sToolsD.Text = T 'Teşhis raporu sorun bildirirken işe yarar. Çevrimdışı paket, GitHub''a erişemeyen bir bilgisayara kurmak içindir.' 'The diagnostic report helps when reporting a problem. The offline package is for installing on a PC that cannot reach GitHub.'
   $ui.btnStatus.Content = T 'Ayrıntılı durum' 'Detailed status'; $ui.btnReport.Content = T 'Teşhis raporu' 'Diagnostic report'
   $ui.btnPack.Content = T 'Çevrimdışı paket' 'Offline package'; $ui.btnLogFile.Content = T 'Kayıt dosyasını aç' 'Open log file'
   $ui.sRemT.Text = T 'Kaldır' 'Uninstall'
@@ -2237,7 +2237,7 @@ function Start-Gui {
     $run = New-Object Windows.Documents.Run($t); $run.Foreground = $(if($col[$lvl]){ $col[$lvl] } else { $col.i })
     if($lvl -eq 'head'){ $run.FontWeight = 'SemiBold' }
     $para.Inlines.Add($run); $para.Inlines.Add((New-Object Windows.Documents.LineBreak)); $ui.log.ScrollToEnd()
-    if($Sync.Busy -and $t.Trim() -and $lvl -ne 'dim'){ $script:LastBusyLine = $t.Trim(); $ui.busyTxt.Text = $(if($script:StepMode){ (T "%$($script:Pct) · " "$($script:Pct)% · ") + $script:LastBusyLine } else { $script:LastBusyLine }) }
+    if($Sync.Busy -and $t.Trim() -and $lvl -ne 'dim'){ $script:LastBusyLine = $t.Trim(); $ui.busyTxt.Text = $(if($script:StepMode){ $script:LastBusyLine + (T " (%$($script:Pct))" " ($($script:Pct)%)") } else { $script:LastBusyLine }) }
     if($script:StepMode -and $t.Trim() -and $lvl -notin @('dim', 'head')){ $ui.stepDetail.Text = $t.Trim() }
   }
   function Show-Page([string]$p){
@@ -2347,10 +2347,10 @@ function Start-Gui {
       if($s -eq 'active'){ Set-StepState $i $(if($ok){ 'done' } else { 'fail' }) } elseif($s -eq 'pending' -and $ok){ Set-StepState $i 'skip' }
     }
     if($ok){ Update-Progress 100 }
-    if($ok){ $ui.stepTitle.Text = $(if($script:StepMode -eq 'probe'){ T 'Test tamamlandı — hiçbir şey kurulmadı.' 'Test completed — nothing was installed.' } else { T 'Kurulum tamamlandı.' 'Installation completed.' }); $ui.stepTitle.Foreground = $tone.ok.fg }
+    if($ok){ $ui.stepTitle.Text = $(if($script:StepMode -eq 'probe'){ T 'Test tamamlandı. Hiçbir şey kurulmadı.' 'Test completed. Nothing was installed.' } else { T 'Kurulum tamamlandı.' 'Installation completed.' }); $ui.stepTitle.Foreground = $tone.ok.fg }
     elseif($code -eq 30){ $ui.stepTitle.Text = T 'Onay bekleniyor (çakışan araçlar).' 'Waiting for confirmation (conflicting tools).'; $ui.stepTitle.Foreground = $tone.warn.fg }
-    elseif($code -eq 60){ $ui.stepTitle.Text = T 'İnternet koptu — iptal edildi, değişiklikler geri alındı.' 'Internet dropped — cancelled, changes reverted.'; $ui.stepTitle.Foreground = $tone.warn.fg }
-    else { $ui.stepTitle.Text = T 'İşlem hatayla bitti — ayrıntılar kayıtlarda.' 'Task failed — see the logs.'; $ui.stepTitle.Foreground = $tone.err.fg }
+    elseif($code -eq 60){ $ui.stepTitle.Text = T 'İnternet bağlantısı koptu. İşlem iptal edildi, değişiklikler geri alındı.' 'Internet connection dropped. Task cancelled, changes reverted.'; $ui.stepTitle.Foreground = $tone.warn.fg }
+    else { $ui.stepTitle.Text = T 'İşlem hatayla bitti. Ayrıntılar Kayıtlar sayfasında.' 'Task failed. See the Logs page.'; $ui.stepTitle.Foreground = $tone.err.fg }
     $ui.stepClose.Visibility = 'Visible'; $script:StepMode = ''
   }
   function Hide-Steps { $ui.stepCard.Visibility = 'Collapsed'; $ui.cards.Visibility = 'Visible' }
@@ -2400,7 +2400,7 @@ function Start-Gui {
     if(-not $conf.Count -and -not $prox.Count){ $ui.banConf.Visibility = 'Collapsed'; return }
     $msg = @()
     if($conf.Count){ $msg += ((T 'Çakışan DPI aracı çalışıyor: {0}. zapret ile aynı anda çalışırsa ikisi de bozulur.' 'Conflicting DPI tool running: {0}. Running together with zapret breaks both.') -f ($conf -join ', ')) }
-    if($prox.Count){ $msg += ((T '{0} — Test/Kur sırasında kapat, yoksa ölçümler yanılır.' '{0} — turn it off during Test/Install, or measurements are misleading.') -f ($prox -join '; ')) }
+    if($prox.Count){ $msg += ((T '{0}. Test/Kur sırasında kapat, yoksa ölçümler yanılır.' '{0}. Turn it off during Test/Install, or measurements are misleading.') -f ($prox -join '; ')) }
     $ui.banConfTxt.Text = $msg -join "`n"
     $ui.banConfGo.Visibility = $(if($conf.Count){ 'Visible' } else { 'Collapsed' })
     $ui.banConf.Visibility = 'Visible'
@@ -2421,7 +2421,7 @@ function Start-Gui {
     $a.EasingFunction = New-Object Windows.Media.Animation.CubicEase
     $ui.stepProg.BeginAnimation([Windows.Controls.Primitives.RangeBase]::ValueProperty, $a)
     $ui.stepPct.Text = (T "%$p" "$p%")
-    if($Sync.Busy){ $ui.busyTxt.Text = (T "%$p · " "$p% · ") + $script:LastBusyLine }
+    if($Sync.Busy){ $ui.busyTxt.Text = $script:LastBusyLine + (T " (%$p)" " ($p%)") }
   }
   # ---------------- kayan "çalışıyor" animasyonu (alt şerit) ----------------
   $marqT = New-Object Windows.Media.TranslateTransform; $ui.marqBar.RenderTransform = $marqT
@@ -2446,7 +2446,7 @@ function Start-Gui {
     'watch-on' = (T 'Nöbetçi açıldı' 'Watchdog enabled'); 'watch-off' = (T 'Nöbetçi kapatıldı' 'Watchdog disabled')
     'game-on' = (T 'Oyun filtresi açıldı' 'Game filter enabled'); 'game-off' = (T 'Oyun filtresi kapatıldı' 'Game filter disabled')
     'set' = (T 'Ayar kaydedildi' 'Setting saved'); 'install' = (T 'Kurulum tamamlandı' 'Installation completed'); 'probe' = (T 'Test tamamlandı' 'Test completed')
-    'uninstall' = (T 'Kaldırıldı — sistem eski haline döndü' 'Uninstalled — system restored'); 'watch-now' = (T 'Nöbetçi çalıştı' 'Watchdog ran')
+    'uninstall' = (T 'Kaldırıldı, sistem eski haline döndü' 'Uninstalled, system restored'); 'watch-now' = (T 'Nöbetçi çalıştı' 'Watchdog ran')
     'report' = (T 'Teşhis raporu hazır' 'Diagnostic report ready'); 'pack' = (T 'Çevrimdışı paket hazır' 'Offline package ready'); 'recover' = (T 'Sistem toparlandı' 'System recovered')
     'sites' = (T 'Siteler kontrol edildi' 'Sites checked'); 'status' = (T 'Durum güncellendi' 'Status refreshed')
   }
@@ -2465,7 +2465,7 @@ function Start-Gui {
 
     # --- büyük durum kartı ---
     if(-not $installed -and -not $zOn -and -not $dOn){ $tn = 'off'; $ic = [char]0xE946; $ti = T 'Kurulu değil' 'Not installed'; $su = T 'Kur / Onar ile başla: engelleri ölçer ve en iyi ayarı kurar.' 'Start with Install / Repair: it measures the blocks and installs the best config.' }
-    elseif($zOn -and $dOn){ $tn = 'ok'; $ic = [char]0xE73E; $ti = T 'Korunuyorsun' 'You are protected'; $su = T 'Engelli siteler açılıyor · DNS şifreli' 'Blocked sites open · DNS is encrypted'; if($wFail){ $tn = 'warn'; $su += (T ' · nöbetçi bir sorun bildirdi' ' · the watchdog reported a problem') } }
+    elseif($zOn -and $dOn){ $tn = 'ok'; $ic = [char]0xE73E; $ti = T 'Korunuyorsun' 'You are protected'; $su = T 'Engelli siteler açılıyor, DNS şifreli.' 'Blocked sites open, DNS is encrypted.'; if($wFail){ $tn = 'warn'; $su += (T ' Nöbetçi bir sorun bildirdi.' ' The watchdog reported a problem.') } }
     elseif($zOn -or $dOn){ $tn = 'warn'; $ic = [char]0xE7BA; $ti = T 'Kısmen korunuyorsun' 'Partially protected'; $su = $(if(-not $zOn){ T 'DPI atlatma kapalı; engelli siteler açılmayabilir.' 'DPI bypass is off; blocked sites may not open.' } else { T 'Şifreli DNS kapalı; DNS zehirlenmesine açıksın.' 'Encrypted DNS is off; DNS poisoning is possible.' }) }
     else { $tn = 'err'; $ic = [char]0xE711; $ti = T 'Koruma kapalı' 'Protection off'; $su = T 'Bileşenleri aşağıdan aç ya da Kur / Onar''a bas.' 'Turn components on below or press Install / Repair.' }
     $ui.heroBg.Background = $tone[$tn].bg; $ui.heroIcon.Foreground = $tone[$tn].fg; $ui.heroIcon.Text = "$ic"
@@ -2475,17 +2475,17 @@ function Start-Gui {
     # --- bileşen kartları ---
     $strat = ("" + (PGet $st 'strategy' '')) -replace '\.bat$', ''
     Set-Dot $ui.dotZap $ui.txtZap $(if($zOn){ 'ok' } else { 'off' }) $(if($zOn){ T 'Çalışıyor' 'Running' } elseif($z){ T 'Kapalı' 'Off' } else { T 'Kurulu değil' 'Not installed' })
-    $ui.detZap.Text = $(if($strat){ $strat + $(if(On $cfg.game){ ' · ' + (T 'oyun filtresi' 'game filter') } else { '' }) } else { '—' })
+    $ui.detZap.Text = $(if($strat){ $strat + $(if(On $cfg.game){ ', ' + (T 'oyun filtresi' 'game filter') } else { '' }) } else { '' })
     Set-Dot $ui.dotDoh $ui.txtDoh $(if($dOn){ 'ok' } else { 'off' }) $(if($dOn){ T 'Şifreli' 'Encrypted' } else { T 'Kapalı' 'Off' })
-    $ui.detDoh.Text = $(if($eng -eq 'native'){ T 'Windows yerleşik DoH' 'Windows built-in DoH' } elseif($dOn){ 'dnscrypt-proxy · 1.1.1.1 / 8.8.8.8' } else { '—' })
+    $ui.detDoh.Text = $(if($eng -eq 'native'){ T 'Windows yerleşik DoH' 'Windows built-in DoH' } elseif($dOn){ 'dnscrypt-proxy (1.1.1.1, 8.8.8.8)' } else { '' })
     $wTone = $(if(-not $wOn){ 'off' } elseif($wFail){ 'warn' } else { 'ok' })
     Set-Dot $ui.dotWat $ui.txtWat $wTone $(if(-not $wOn){ T 'Kapalı' 'Off' } elseif($wFail){ T 'Uyarı' 'Warning' } else { T 'Açık' 'On' })
-    $ui.detWat.Text = $(if($w -and (PGet $w 'lastRun')){ (T 'son kontrol ' 'last check ') + (Get-Ago (PGet $w 'lastRun')) } elseif($wOn){ T 'henüz kontrol yapmadı' 'no check yet' } else { '—' })
+    $ui.detWat.Text = $(if(-not $wOn){ '' } elseif($w -and (PGet $w 'lastRun')){ (T 'son kontrol ' 'last check ') + (Get-Ago (PGet $w 'lastRun')) } elseif($wOn){ T 'henüz kontrol yapmadı' 'no check yet' } else { '' })
 
     # --- nöbetçi sayfası ---
     Set-Dot $ui.wDot $null $wTone ''
-    $ui.wTitle.Text = $(if(-not $wOn){ T 'Nöbetçi kapalı' 'Watchdog off' } elseif($w -and (PGet $w 'lastRun')){ (T 'Açık · son kontrol ' 'On · last check ') + (Get-Ago (PGet $w 'lastRun')) } else { T 'Açık · henüz kontrol yapmadı' 'On · no check yet' })
-    $ui.wSub.Text = $(if($w -and (PGet $w 'message')){ PGet $w 'message' } else { '' })
+    $ui.wTitle.Text = $(if(-not $wOn){ T 'Nöbetçi kapalı' 'Watchdog off' } elseif($w -and (PGet $w 'lastRun')){ (T 'Açık, son kontrol ' 'On, last check ') + (Get-Ago (PGet $w 'lastRun')) } else { T 'Açık, henüz kontrol yapmadı' 'On, no check yet' })
+    $ui.wSub.Text = $(if($wOn -and $w -and (PGet $w 'message')){ PGet $w 'message' } else { '' })
     $ui.watchEvents.Children.Clear()
     $evs = @(PGet $w 'events' @())
     if($evs.Count){ for($i = $evs.Count - 1; $i -ge 0; $i--){ $tt = ''; try { $tt = ([datetime]$evs[$i].t).ToString('dd.MM HH:mm') } catch {}; $ui.watchEvents.Children.Add((New-EventRow $tt ("" + $evs[$i].m))) | Out-Null } }
@@ -2494,7 +2494,7 @@ function Start-Gui {
     Update-WatchBanner $w
     # --- siteler alt başlığı ---
     $learned = 0; try { $learned = @(Get-LearnedDomains).Count } catch {}
-    $ui.sitesSub.Text = (T 'Siteler tarayıcının yaptığı gibi (sistem DNS''i + TLS) denenir. Kurulumda engelli bulunan siteler ve Discord/YouTube listelenir. Otomatik öğrenilen site sayısı: ' 'Sites are tested like a browser does (system DNS + TLS). Sites found blocked at install plus Discord/YouTube are listed. Auto-learned sites: ') + $learned
+    $ui.sitesSub.Text = (T 'Kurulumda engelli bulunan siteler ile Discord ve YouTube. Otomatik öğrenilen site sayısı: ' 'Sites found blocked at install, plus Discord and YouTube. Auto-learned sites: ') + $learned
 
     # --- anahtarlar / ayarlar (programatik değişiklik olay tetiklemesin) ---
     $script:syncing = $true
@@ -2554,7 +2554,7 @@ function Start-Gui {
           if($r -eq 'Yes'){ Run-Engine $script:LastMode 'yes'; return }
         }
         'AV' {
-          $msg = (T "{0}, winws dosyalarını yanlış pozitif olarak engelledi.`n`nwinws açık kaynak bir araç; ağ paketlerini değiştirdiği için 'HackTool' sanılıyor. Bu araç güvenlik ayarlarına KENDİSİ dokunmaz; istisnayı senin eklemen gerekiyor:`n`n  Klasör: {1}`n`n'Evet': klasör yolu panoya kopyalanır{2}.`nİstisnayı ekledikten sonra Kur / Onar'a tekrar bas." "{0} falsely flagged the winws files.`n`nwinws is open source; it is mistaken for a 'HackTool' because it modifies network packets. This tool never changes security settings by itself; you need to add the exclusion:`n`n  Folder: {1}`n`n'Yes': the folder path is copied to the clipboard{2}.`nAfter adding the exclusion, press Install / Repair again.") -f $p[1], $p[2], $(if($p[1] -match 'Defender'){ T ' ve Windows Güvenliği açılır' ' and Windows Security opens' } else { '' })
+          $msg = (T "{0}, winws dosyalarını engelledi. winws ağ paketlerini değiştirdiği için yanlışlıkla 'HackTool' olarak işaretleniyor.`n`nBu klasörü antivirüs istisnalarına ekle:`n  {1}`n`n'Evet': klasör yolu panoya kopyalanır{2}.`nSonra Kur / Onar'a tekrar bas." "{0} blocked the winws files. winws is falsely flagged as a 'HackTool' because it modifies network packets.`n`nAdd this folder to your antivirus exclusions:`n  {1}`n`n'Yes': the folder path is copied to the clipboard{2}.`nThen press Install / Repair again.") -f $p[1], $p[2], $(if($p[1] -match 'Defender'){ T ' ve Windows Güvenliği açılır' ' and Windows Security opens' } else { '' })
           if([Windows.MessageBox]::Show($msg, (T 'Antivirüs engeli' 'Antivirus block'), 'YesNo', 'Warning') -eq 'Yes'){
             try { [Windows.Clipboard]::SetText($p[2]) } catch {}
             if($p[1] -match 'Defender'){ try { Start-Process 'windowsdefender://threatsettings' } catch {} }
@@ -2580,11 +2580,11 @@ function Start-Gui {
         if($script:StepMode){ Finish-Steps (-not $script:hadErr -and $script:LastExit -eq 0) $script:LastExit }
         if($script:LastMode -eq 'watch-now'){ Mark-WatchSeen }
         if($script:LastExit -eq 30){ }
-        elseif($script:hadErr -or $script:LastExit -ne 0){ Show-Toast (T 'İşlem hatayla bitti — ayrıntılar Kayıtlar''da' 'Task failed — see Logs') 'err' }
+        elseif($script:hadErr -or $script:LastExit -ne 0){ Show-Toast (T 'İşlem hatayla bitti. Ayrıntılar Kayıtlar''da.' 'Task failed. See Logs.') 'err' }
         elseif($ToastMsg[$script:LastMode]){ Show-Toast $ToastMsg[$script:LastMode] 'ok' }
         Start-BgScan
         if($script:LastMode -eq 'sites'){ $script:SitesChecked = $true }
-        if($script:hadErr){ $ui.hint.Foreground = $tone.err.fg; $ui.hint.Text = (T 'Son işlem hatayla bitti: ' 'Last task finished with errors: ') + $script:LastMode + (T ' — ayrıntılar Kayıtlar sayfasında.' ' — see the Logs page.') }
+        if($script:hadErr){ $ui.hint.Foreground = $tone.err.fg; $ui.hint.Text = (T 'Son işlem hatayla bitti: ' 'Last task finished with errors: ') + $script:LastMode + (T '. Ayrıntılar Kayıtlar sayfasında.' '. See the Logs page.') }
         else { $ui.hint.Foreground = $col.dim; $ui.hint.Text = (T 'Son işlem tamamlandı: ' 'Last task completed: ') + $script:LastMode }
         Handle-Marks
       } elseif($item.StartsWith('@@STEP|')){
@@ -2595,7 +2595,7 @@ function Start-Gui {
         try { $script:LastExit = [int]$item.Substring(7) } catch {}
       } elseif($item.StartsWith('@@SITE|')){
         $p = $item.Split('|'); $ms = [int]$p[2]
-        $ui.sitesList.Children.Add((New-Row $p[1] $(if($ms -ge 0){ T 'Açık' 'Open' } else { T 'Engelli' 'Blocked' }) $(if($ms -ge 0){ 'ok' } else { 'err' }) $(if($ms -ge 0){ "$ms ms" } else { '—' }))) | Out-Null
+        $ui.sitesList.Children.Add((New-Row $p[1] $(if($ms -ge 0){ T 'Açık' 'Open' } else { T 'Engelli' 'Blocked' }) $(if($ms -ge 0){ 'ok' } else { 'err' }) $(if($ms -ge 0){ "$ms ms" } else { '' }))) | Out-Null
       } elseif($item.StartsWith('@@')){
         if(-not $item.StartsWith('@@EXIT|') -and -not $item.StartsWith('@@LEARNED|')){ $script:Marks += $item.Substring(2) }
       } else {
@@ -2635,7 +2635,7 @@ function Start-Gui {
   $ui.navLog.Add_Checked({ if(-not $script:syncing){ Show-Page 'Log' } })
   $ui.btnShowLog.Add_Click({ Show-Page 'Log' })
 
-  $ui.btnInstall.Add_Click({ if([Windows.MessageBox]::Show((T 'Ölçüm yapıp en iyi ayarı servis olarak kuracak/onaracak (seçili bileşenlerle). Devam?' 'Measures and installs/repairs the best config as services (selected components). Continue?'), (T 'Kur / Onar' 'Install / Repair'), 'YesNo', 'Question') -eq 'Yes'){ Run-Engine 'install' } })
+  $ui.btnInstall.Add_Click({ if([Windows.MessageBox]::Show((T 'Engeller ölçülecek ve en iyi ayar kurulacak. Devam edilsin mi?' 'Blocks will be measured and the best config installed. Continue?'), (T 'Kur / Onar' 'Install / Repair'), 'YesNo', 'Question') -eq 'Yes'){ Run-Engine 'install' } })
   $ui.btnProbe.Add_Click({ Run-Engine 'probe' })
   $ui.btnSites.Add_Click({ Run-Engine 'sites' })
   $ui.btnWatchNow.Add_Click({ Run-Engine 'watch-now' })
@@ -2679,13 +2679,11 @@ function Start-Gui {
     $timer.Stop()
   })
 
-  Add-Line (T 'zapret-auto hazır. İşlemlerin ayrıntılı çıktısı burada görünür.' 'zapret-auto ready. Detailed task output appears here.') 'head'
-  Add-Line (T 'Bu dosya okunabilir düz metindir; ne yaptığını Not Defteri ile görebilirsin.' 'This file is plain readable text; open it in Notepad to see what it does.') 'dim'
-  Set-Sites-Empty
+  Add-Line (T 'zapret-auto hazır. İşlemlerin ayrıntılı çıktısı burada görünür.' 'zapret-auto ready. Detailed task output appears here.') 'head'  Set-Sites-Empty
   Set-Busy $false
   Refresh-Status
   $ui.hint.Foreground = $col.dim
-  $ui.hint.Text = T 'Test Et hiçbir şey kurmadan ölçer. Kur / Onar ölçüp en iyi ayarı kalıcı olarak kurar.' 'Test measures without installing anything. Install / Repair measures and installs the best config permanently.'
+  $ui.hint.Text = ''
   if($env:ZA_GUI_SMOKE -eq '1'){ return }
   Start-BgScan
   # son pencere konumunu geri yükle (ekran dışında kalmıyorsa)
@@ -2737,7 +2735,7 @@ function Do-Recover {
 function Do-WatchNow {
   Need-Admin
   if(-not (Get-WatchTask)){ Fail 70 (T 'Nöbetçi görevi yok (kapalı ya da kurulmamış). Önce Kur/Onar çalıştır ya da nöbetçiyi aç.' 'No watchdog task (off or not installed). Run Install/Repair or enable the watchdog first.') }
-  Head (T '[nöbetçi şimdi çalıştırılıyor -- SYSTEM hesabıyla, gerçek koşullarda]' '[running the watchdog now -- as SYSTEM, under real conditions]')
+  Head (T '[nöbetçi şimdi çalıştırılıyor]' '[running the watchdog now]')
   $before = PGet (Read-Json $WatchFile) 'lastRun'
   $pos = $(if(Test-Path -LiteralPath $LogFile){ (Get-Item -LiteralPath $LogFile).Length } else { 0 })
   try { Start-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath -ErrorAction Stop } catch { Fail 71 ((T 'Görev başlatılamadı: {0}' 'Could not start the task: {0}') -f $_.Exception.Message) }
@@ -2758,7 +2756,7 @@ function Do-WatchNow {
   $w = Read-Json $WatchFile
   if((PGet $w 'lastRun') -and (PGet $w 'lastRun') -ne $before){
     $r = PGet $w 'result'
-    Log ((T '  Nöbetçi SYSTEM olarak çalıştı. Sonuç: {0} -- {1}' '  Watchdog ran as SYSTEM. Result: {0} -- {1}') -f $r, (PGet $w 'message')) $(if($r -eq 'fail'){ 'err' } else { 'ok' })
+    Log ((T '  Nöbetçi çalıştı. Sonuç: {0} ({1})' '  Watchdog ran. Result: {0} ({1})') -f $r, (PGet $w 'message')) $(if($r -eq 'fail'){ 'err' } else { 'ok' })
   } else {
     $info = Get-ScheduledTaskInfo -TaskName $TaskName -TaskPath $TaskPath -ErrorAction SilentlyContinue
     Log ((T '  [!] Nöbetçi sonuç yazmadı (görev sonucu: 0x{0:X}). Başka bir işlem sürüyor olabilir; biraz sonra tekrar dene.' '  [!] Watchdog wrote no result (task result: 0x{0:X}). Another task may be running; retry shortly.') -f [int64]$info.LastTaskResult) 'warn'

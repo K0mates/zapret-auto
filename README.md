@@ -1,6 +1,6 @@
 # zapret-auto
 
-**Tek dosya, kurulumsuz DPI atlatma + şifreli DNS — Windows için.**
+**Tek dosya, kurulumsuz DPI atlatma + şifreli DNS, Windows için.**
 İnternet servis sağlayıcının (ISS) DPI ile engellediği siteleri (Discord, Roblox, Wattpad vb.) açar, DNS zehirlenmesini şifreli DNS (DoH) ile aşar. VPN değildir: trafik tünellenmez, ping değişmez, sadece engellenen bağlantıların ilk paketleri değiştirilir.
 
 [English below](#english)
@@ -33,7 +33,7 @@ Bu kadar. Bilgisayar her açıldığında kendiliğinden çalışır.
 
 ## Güvenlik ve şeffaflık
 
-- **Tek, okunabilir dosya.** `ZAPRET-AUTO.bat`'ın üst kısmı kısa bir batch başlatıcı, geri kalanı düz PowerShell. Base64, gizlenmiş kod ya da gizli indirme yok — Not Defteri ile açıp ne yaptığını okuyabilirsin.
+- **Tek, okunabilir dosya.** `ZAPRET-AUTO.bat`'ın üst kısmı kısa bir batch başlatıcı, geri kalanı düz PowerShell. Base64, gizlenmiş kod ya da gizli indirme yok. Not Defteri ile açıp ne yaptığını okuyabilirsin.
 - **İndirilen paketler doğrulanır.** zapret ve dnscrypt-proxy, resmi GitHub sürümlerinden indirilir ve SHA256 ile doğrulanır (sabitlenmiş sürümler: zapret-discord-youtube 1.9.9c, dnscrypt-proxy 2.1.16).
 - **Güvenlik ayarlarına kendiliğinden dokunmaz.** Antivirüs istisnası eklemez, Defender'ı kapatmaz.
 - **Değiştirdiği şeyler:** `zapret` ve `dnscrypt-proxy` servisleri, `\zapret-auto\` altında bir zamanlanmış görev, internete çıkan ağ bağdaştırıcısının DNS ayarı, TCP zaman damgaları. Dosyalar `%ProgramData%\zapret-auto` içindedir. Hepsi **Kaldır** ile geri alınır.
@@ -61,10 +61,10 @@ Windows 10 / 11 (64-bit), PowerShell 5.1 (Windows ile gelir), yönetici izni. İ
 
 ## Teşekkürler
 
-- [bol-van/zapret](https://github.com/bol-van/zapret) — `winws` ve DPI atlatma teknikleri
-- [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube) — Windows paketi ve stratejiler
-- [DNSCrypt/dnscrypt-proxy](https://github.com/DNSCrypt/dnscrypt-proxy) — şifreli DNS
-- [WinDivert](https://github.com/basil00/WinDivert) — paket yakalama sürücüsü
+- [bol-van/zapret](https://github.com/bol-van/zapret): `winws` ve DPI atlatma teknikleri
+- [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube): Windows paketi ve stratejiler
+- [DNSCrypt/dnscrypt-proxy](https://github.com/DNSCrypt/dnscrypt-proxy): şifreli DNS
+- [WinDivert](https://github.com/basil00/WinDivert): paket yakalama sürücüsü
 
 Bu projeler depoya dahil edilmez; çalışma sırasında resmi sürümlerinden indirilir ve kendi lisanslarına tabidir.
 
@@ -77,13 +77,13 @@ Bu projeler depoya dahil edilmez; çalışma sırasında resmi sürümlerinden i
 ## English
 
 **Single-file, install-free DPI bypass + encrypted DNS for Windows.**
-Opens sites your ISP blocks with DPI and defeats DNS poisoning with DNS-over-HTTPS. Not a VPN: no tunnel, no ping change — only the first packets of blocked connections are modified.
+Opens sites your ISP blocks with DPI and defeats DNS poisoning with DNS-over-HTTPS. Not a VPN: no tunnel, no ping change; only the first packets of blocked connections are modified.
 
 **Quick start:** download `ZAPRET-AUTO.bat` from [Releases](../../releases/latest), double-click, approve the admin prompt, press **Install / Repair**. It measures the blocks, picks the strategy that works on your connection (from the zapret / Flowseal bundle) and installs it as a boot service. The UI follows your Windows language (Turkish / English).
 
-**Highlights:** probe mode that changes nothing · per-network strategy memory · autohostlist learns new blocks · encrypted DNS via dnscrypt-proxy (Windows 10) or built-in DoH (Windows 11, experimental) · a watchdog scheduled task that repairs services/DNS and re-selects a strategy when the ISP changes its DPI · recovery of interrupted tasks · detection of GoodbyeDPI/ByeDPI/other zapret installs · clean uninstall that restores the previous state.
+**Highlights:** probe mode that changes nothing, per-network strategy memory, autohostlist learns new blocks, encrypted DNS via dnscrypt-proxy (Windows 10) or built-in DoH (Windows 11, experimental), a watchdog scheduled task that repairs services/DNS and re-selects a strategy when the ISP changes its DPI, recovery of interrupted tasks, detection of GoodbyeDPI/ByeDPI/other zapret installs, clean uninstall that restores the previous state.
 
-**Transparency:** one readable file (short batch launcher + plain PowerShell, no obfuscation) · downloads pinned official releases verified by SHA256 · never adds antivirus exclusions by itself · no telemetry.
+**Transparency:** one readable file (short batch launcher + plain PowerShell, no obfuscation), downloads pinned official releases verified by SHA256, never adds antivirus exclusions by itself, no telemetry.
 
 **Antivirus:** `winws.exe`/WinDivert are often false-flagged as "HackTool"; the tool explains it and asks you to exclude `C:\ProgramData\zapret-auto`.
 
@@ -91,4 +91,4 @@ License: [GPL-3.0](LICENSE). Third-party components are downloaded at runtime fr
 
 ---
 
-<sub>Claude (Anthropic) yardımıyla geliştirildi. · Developed with the help of Claude (Anthropic).</sub>
+<sub>Claude (Anthropic) yardımıyla geliştirildi. / Developed with the help of Claude (Anthropic).</sub>
