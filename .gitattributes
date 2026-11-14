@@ -1,0 +1,5 @@
+# .bat dosyasi oldugu gibi (CRLF) saklanir; LF'e cevrilirse cmd duzgun calistiramaz.
+# -text: git satir sonlarina dokunmaz -> GitHub 'Raw' indirmesi de CRLF olur.
+*.bat -text
+*.md  text eol=lf
+LICENSE text eol=lf
