@@ -26,7 +26,7 @@ if errorlevel 1 (
 set "ZA_HOME=%ProgramData%\zapret-auto"
 set "ZA_PS1=%ProgramData%\zapret-auto\zapret-auto.ps1"
 if exist "%ZA_PS1%" icacls "%ZA_PS1%" /reset /C /Q >nul 2>&1
-powershell -NoProfile -Command "$d=$env:ZA_HOME; if(-not (Test-Path -LiteralPath $d)){ New-Item -ItemType Directory -Path $d -Force | Out-Null }; $b=[IO.File]::ReadAllBytes($env:ZA_SELF); $o=0; if($b.Length -ge 3 -and $b[0] -eq 239 -and $b[1] -eq 187 -and $b[2] -eq 191){ $o=3 }; $f=[IO.File]::Create($env:ZA_PS1); $f.Write([byte[]](239,187,191),0,3); $f.Write($b,$o,$b.Length-$o); $f.Close()"
+powershell -NoProfile -Command "$d=$env:ZA_HOME; if(-not (Test-Path -LiteralPath $d)){ New-Item -ItemType Directory -Path $d -Force | Out-Null }; Get-Content -LiteralPath $env:ZA_SELF -Raw -Encoding UTF8 | Set-Content -LiteralPath $env:ZA_PS1 -Encoding UTF8 -NoNewline -ErrorAction Stop"
 if errorlevel 1 (
   echo   [zapret-auto] %ZA_PS1% yazilamadi / could not be written.
   powershell -NoProfile -Command "Add-Type -AssemblyName PresentationFramework; [void][Windows.MessageBox]::Show('zapret-auto: ' + $env:ZA_PS1 + ' yazilamadi / could not be written.', 'zapret-auto')"
@@ -37,10 +37,10 @@ set "ZA_UI=cli"
 if "%~1"=="" set "ZA_UI=gui"
 if /i "%~1"=="__elevated" set "ZA_UI=gui"
 if "%ZA_UI%"=="gui" (
-  start "" powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File "%ZA_PS1%" gui
+  start "" powershell -NoProfile -ExecutionPolicy RemoteSigned -WindowStyle Hidden -STA -File "%ZA_PS1%" gui
   exit /b 0
 )
-powershell -NoProfile -ExecutionPolicy Bypass -File "%ZA_PS1%" %*
+powershell -NoProfile -ExecutionPolicy RemoteSigned -File "%ZA_PS1%" %*
 exit /b %errorlevel%
 #>
 # =============================================================================
@@ -56,7 +56,7 @@ $ProgressPreference    = 'SilentlyContinue'   # PS 5.1'de Invoke-WebRequest'i ç
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
 
-$ZA_VERSION = '2.4.0'
+$ZA_VERSION = '2.4.1'
 $Rest  = @($Rest | Where-Object { $_ })
 $Quiet = [bool]($Rest | Where-Object { "$_" -match '^/?(quiet|q|sessiz)$' })
 $Yes   = $Quiet -or [bool]($Rest | Where-Object { "$_" -match '^/?(yes|evet|y)$' })
@@ -568,9 +568,7 @@ function Show-AVInfo {
   try {
     $mp = Get-MpComputerStatus -ErrorAction Stop
     if(-not $mp.RealTimeProtectionEnabled){ Log (T '  Defender gerçek zamanlı koruma kapalı.' '  Defender real-time protection is off.') 'dim'; return }
-    $ex = @((Get-MpPreference -ErrorAction Stop).ExclusionPath)
-    if($ex -contains $Root){ Log ((T '  Defender istisnası mevcut: {0}' '  Defender exclusion present: {0}') -f $Root) 'ok' }
-    else { Log (T '  Defender açık. winws yanlış pozitif olarak engellenirse sana adım adım yol göstereceğim.' '  Defender is on. If it false-flags winws, you will get step-by-step guidance.') 'dim' }
+    Log (T '  Defender açık. winws yanlış pozitif olarak engellenirse sana adım adım yol göstereceğim.' '  Defender is on. If it false-flags winws, you will get step-by-step guidance.') 'dim'
   } catch {}
 }
 # winws/WinDivert antivirüs tarafından engellendiğinde: tam olarak neyin, hangi isimle yakalandığını söyle + arayüze yönlendirme işareti.
@@ -1254,7 +1252,7 @@ function Install-WatchTask([switch]$Quiet) {
     <Enabled>true</Enabled>
     <Hidden>false</Hidden>
   </Settings>
-  <Actions Context="Author"><Exec><Command>powershell.exe</Command><Arguments>-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$esc" watch</Arguments></Exec></Actions>
+  <Actions Context="Author"><Exec><Command>powershell.exe</Command><Arguments>-NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File "$esc" watch</Arguments></Exec></Actions>
 </Task>
 "@
   try { Register-ScheduledTask -Xml $xml -TaskName $TaskName -TaskPath $TaskPath -Force -ErrorAction Stop | Out-Null; if(-not $Quiet){ Log (T '  Nöbetçi kuruldu (açılışta, 6 saatte bir ve ağ değişince kontrol eder).' '  Watchdog installed (checks at boot, every 6h and on network change).') 'ok' }; return $true }
@@ -1458,7 +1456,7 @@ function Do-Report {
   Add-RLine ("PS        : {0}   admin: {1}   lang: {2}" -f $PSVersionTable.PSVersion, (Is-Admin), $script:Lang)
   Add-RLine ("AV        : {0}" -f ((Get-ActiveAV) -join ', '))
   Add-RLine ("SAC       : {0}  (0=kapalı 1=açık 2=değerlendirme -1=yok)" -f (Get-SacState))
-  try { $mp = Get-MpComputerStatus -ErrorAction Stop; Add-RLine ("Defender  : RT={0}  exclusionForRoot={1}" -f $mp.RealTimeProtectionEnabled, (@((Get-MpPreference -ErrorAction Stop).ExclusionPath) -contains $Root)) } catch {}
+  try { $mp = Get-MpComputerStatus -ErrorAction Stop; Add-RLine ("Defender  : RT={0}" -f $mp.RealTimeProtectionEnabled) } catch {}
   Add-RLine; Add-RLine '--- config ---'; foreach($k in (Load-Config).Keys){ Add-RLine ("{0}={1}" -f $k, (Load-Config)[$k]) }
   Add-RLine; Add-RLine '--- state ---'
   $st = Get-State
@@ -1548,12 +1546,6 @@ function Do-Uninstall {
   if((PGet $snap 'timestamps') -eq 'Disabled'){ & netsh.exe interface tcp set global timestamps=disabled 2>&1 | Out-Null; Log (T '  TCP timestamps eski haline (kapalı) döndü' '  TCP timestamps restored (disabled)') 'ok' }
   # kurulumda durdurduğumuz başka DPI araçlarını (GoodbyeDPI vb.) eski başlangıç ayarlarına döndür
   Restore-Conflicts
-  # v1 otomatik Defender istisnaları ekliyordu; bunları temizle (klasör zaten siliniyor)
-  try {
-    $mp = Get-MpPreference -ErrorAction Stop
-    if(@($mp.ExclusionPath) -contains $Root){ Remove-MpPreference -ExclusionPath $Root -ErrorAction SilentlyContinue; Log (T '  Defender klasör istisnası kaldırıldı' '  Defender folder exclusion removed') 'ok' }
-    if(@($mp.ExclusionProcess) -contains 'winws.exe'){ Remove-MpPreference -ExclusionProcess 'winws.exe' -ErrorAction SilentlyContinue; Log (T '  Defender işlem istisnası (winws.exe) kaldırıldı' '  Defender process exclusion (winws.exe) removed') 'ok' }
-  } catch {}
   Log (T '  dosyalar siliniyor...' '  deleting files...') 'dim'
   for($i = 0; $i -lt 3 -and (Test-Path -LiteralPath $Root); $i++){ Remove-Item -LiteralPath $Root -Recurse -Force -ErrorAction SilentlyContinue; if(Test-Path -LiteralPath $Root){ Start-Sleep -Seconds 1 } }
   if(Test-Path -LiteralPath $Root){ Log ((T '  [!] Bazı dosyalar silinemedi (kullanımda olabilir): {0}' '  [!] Some files could not be deleted (in use?): {0}') -f $Root) 'warn' }
@@ -2392,7 +2384,7 @@ function Start-Gui {
     [void]$ps.AddScript({
       try {
         $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = 'powershell.exe'; $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $Eng + '" conflicts'
+        $psi.FileName = 'powershell.exe'; $psi.Arguments = '-NoProfile -ExecutionPolicy RemoteSigned -File "' + $Eng + '" conflicts'
         $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.RedirectStandardOutput = $true; $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
         $psi.EnvironmentVariables['ZA_GUI_CHILD'] = '1'
         $p = [System.Diagnostics.Process]::Start($psi)
@@ -2536,7 +2528,7 @@ function Start-Gui {
       try {
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = 'powershell.exe'
-        $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $Eng + '" ' + $EArgs
+        $psi.Arguments = '-NoProfile -ExecutionPolicy RemoteSigned -File "' + $Eng + '" ' + $EArgs
         $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
         $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
         $psi.StandardOutputEncoding = [Text.Encoding]::UTF8; $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
@@ -2676,7 +2668,7 @@ function Start-Gui {
       if([Windows.MessageBox]::Show((T 'İşlem devam ediyor. Yine de kapat?' 'A task is running. Close anyway?'), 'zapret-auto', 'YesNo', 'Warning') -ne 'Yes'){ $_.Cancel = $true; return }
       try { if($Sync.Proc){ $Sync.Proc.Kill() } } catch {}
       # yarıda kesilen işlemi arka planda toparla (geçici winws, durmuş servis, ölü DNS)
-      try { Start-Process powershell.exe -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $script:Engine + '" recover') -WindowStyle Hidden } catch {}
+      try { Start-Process powershell.exe -ArgumentList ('-NoProfile -ExecutionPolicy RemoteSigned -WindowStyle Hidden -File "' + $script:Engine + '" recover') -WindowStyle Hidden } catch {}
     }
     # pencere konumunu/boyutunu hatırla
     try {
